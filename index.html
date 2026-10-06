@@ -1,0 +1,1680 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Cleaning Grading Dashboard - เครื่องมือตรวจและเฉลยโจทย์ข้อมูล 12 ชุด</title>
+
+  <!-- Google Fonts: Prompt & Sarabun for professional Thai typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Sarabun:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- PapaParse CDN for robust CSV parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+  <!-- Local Registry and Diff Engine -->
+  <script src="datasets_registry.js"></script>
+  <script src="diff_engine.js"></script>
+
+  <style>
+    /* Global Typography & Font Stack */
+    :root {
+      --font-heading: 'Prompt', system-ui, -apple-system, sans-serif;
+      --font-body: 'Sarabun', system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      font-family: var(--font-body);
+      color: #1e293b;
+      background-color: #f8fafc;
+      transition: background-color 0.25s ease, font-size 0.25s ease;
+    }
+
+    h1, h2, h3, h4, .font-heading {
+      font-family: var(--font-heading);
+    }
+
+    /* Custom Scrollbar for large tables */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    /* Pulse animation for dropzone on drag */
+    .drag-active {
+      border-color: #3b82f6 !important;
+      background-color: #eff6ff !important;
+      transform: scale(1.008);
+      box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.2);
+    }
+
+    /* Projector Mode (ขยายจอใหญ่สำหรับห้องเรียน) */
+    body.projector-mode {
+      font-size: 18px;
+      background-color: #0f172a;
+      color: #f8fafc;
+    }
+
+    body.projector-mode .projector-card {
+      background-color: #1e293b !important;
+      border-color: #334155 !important;
+      color: #f1f5f9 !important;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4) !important;
+    }
+
+    body.projector-mode .projector-header-card {
+      background: linear-gradient(135deg, #1e293b, #0f172a) !important;
+      border-color: #475569 !important;
+    }
+
+    body.projector-mode .projector-text-muted {
+      color: #94a3b8 !important;
+    }
+
+    body.projector-mode .metric-number {
+      font-size: 3.5rem !important;
+      line-height: 1 !important;
+      font-weight: 800 !important;
+    }
+
+    body.projector-mode .metric-label {
+      font-size: 1.15rem !important;
+      font-weight: 600 !important;
+    }
+
+    body.projector-mode table th {
+      padding: 1rem 1.25rem !important;
+      font-size: 1.1rem !important;
+      background-color: #1e293b !important;
+      color: #f8fafc !important;
+      border-color: #475569 !important;
+    }
+
+    body.projector-mode table td {
+      padding: 1rem 1.25rem !important;
+      font-size: 1.15rem !important;
+      border-color: #334155 !important;
+    }
+
+    body.projector-mode .cell-pass {
+      background-color: #064e3b !important;
+      color: #ecfdf5 !important;
+      border-color: #059669 !important;
+    }
+
+    body.projector-mode .cell-fail {
+      background-color: #881337 !important;
+      color: #ffe4e6 !important;
+      border-color: #e11d48 !important;
+    }
+
+    body.projector-mode .checkpoint-item {
+      background-color: #1e293b !important;
+      border-color: #334155 !important;
+    }
+
+    /* Cell states */
+    .cell-pass {
+      background-color: #ecfdf5;
+      color: #065f46;
+      border-color: #a7f3d0;
+    }
+
+    .cell-fail {
+      background-color: #fff1f2;
+      color: #9f1239;
+      border-color: #fecdd3;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .cell-fail:hover {
+      background-color: #ffe4e6;
+      border-color: #f43f5e;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 6px -1px rgba(225, 29, 72, 0.15);
+    }
+
+    /* Modal slide animation */
+    @keyframes modalFadeIn {
+      from {
+        opacity: 0;
+        transform: scale(0.96) translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    .modal-animate {
+      animation: modalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* Offline fallback styles in case CDN is unreachable */
+    .fallback-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 0.75rem;
+      background-color: #ffffff;
+      padding: 1.25rem;
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-16 selection:bg-blue-500 selection:text-white">
+
+  <!-- Top Sticky Navigation & Global Controls -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm transition-colors duration-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+      
+      <!-- Brand & Heading -->
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 text-xl font-bold">
+          🧹
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl sm:text-2xl font-bold font-heading text-slate-900 tracking-tight flex items-center gap-2">
+              Data Cleaning Grading Dashboard
+            </h1>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+              v1.0 Teacher Edition
+            </span>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-500 font-medium">
+            ระบบตรวจการบ้านและฉายขึ้นจอโปรเจกเตอร์ เทียบเฉลย 18 เกณฑ์ประเมินอัตโนมัติ (12 Challenge Sets)
+          </p>
+        </div>
+      </div>
+
+      <!-- Action Buttons: Projector Mode & Reveal All -->
+      <div class="flex items-center flex-wrap gap-2.5">
+        
+        <!-- Projector Mode Switch -->
+        <button id="projectorModeToggle" type="button"
+                class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 active:scale-95 shadow-sm">
+          <span class="text-lg">📽️</span>
+          <span id="projectorBtnText">ขยายจอใหญ่ (Projector Mode)</span>
+        </button>
+
+        <!-- Reveal All Toggle -->
+        <button id="revealAllToggle" type="button"
+                class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 active:scale-95 shadow-sm">
+          <span id="revealIcon" class="text-lg">👁️</span>
+          <span id="revealBtnText">เฉลยทั้งหมด (Reveal All)</span>
+        </button>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- Script Missing Diagnostics Banner (shows only if local scripts fail to load) -->
+  <div id="missingScriptsAlert" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+    <div class="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-r-xl shadow-sm text-rose-800">
+      <div class="flex items-start gap-3">
+        <span class="text-2xl">⚠️</span>
+        <div>
+          <h3 class="font-bold font-heading text-rose-900">ไม่พบไฟล์ datasets_registry.js หรือ diff_engine.js</h3>
+          <p class="text-sm mt-1">
+            กรุณาตรวจสอบว่าไฟล์ <code>datasets_registry.js</code> และ <code>diff_engine.js</code> วางอยู่ในโฟลเดอร์เดียวกับหน้านี้
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
+
+    <!-- Section 1: Dataset Selector & Quick Demo Bar -->
+    <div class="projector-card bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
+        
+        <!-- Dataset Dropdown (12 sets) -->
+        <div class="lg:col-span-5 space-y-1.5">
+          <label for="datasetSelect" class="block text-sm font-bold font-heading text-slate-700 flex items-center justify-between">
+            <span>🎯 เลือกชุดโจทย์ที่ต้องการตรวจ (12 ชุดข้อมูล):</span>
+            <span id="autoDetectBadge" class="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 font-normal border border-slate-200">
+              💡 โหมดพร้อมตรวจ
+            </span>
+          </label>
+          <div class="relative">
+            <select id="datasetSelect" 
+                    class="block w-full rounded-xl border-slate-300 bg-slate-50 py-2.5 pl-3 pr-10 text-slate-900 font-medium text-sm focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm cursor-pointer border">
+              <!-- Dynamically populated or static 12 options -->
+              <option value="set01">🎓 ชุดที่ 01: ลงทะเบียนอบรม (training) [PK: รหัสพนักงาน]</option>
+              <option value="set02">🔧 ชุดที่ 02: ใบแจ้งซ่อม (repair) [PK: เลขที่ใบงาน]</option>
+              <option value="set03">✈️ ชุดที่ 03: เบิกค่าเดินทาง (travel) [PK: เลขที่ใบเบิก]</option>
+              <option value="set04">📎 ชุดที่ 04: เบิกวัสดุสำนักงาน (supplies) [PK: เลขที่ใบเบิก]</option>
+              <option value="set05">🛒 ชุดที่ 05: ใบสั่งซื้อ (purchase) [PK: เลขที่ใบสั่งซื้อ]</option>
+              <option value="set06" selected>⚙️ ชุดที่ 06: สต็อกอะไหล่ (spareparts) [PK: รหัสอะไหล่]</option>
+              <option value="set07">🚗 ชุดที่ 07: ใช้รถส่วนกลาง (companycar) [PK: เลขที่ใบขอใช้รถ]</option>
+              <option value="set08">🦺 ชุดที่ 08: ตรวจความปลอดภัยประจำเดือน (safety) [PK: เลขที่การตรวจ]</option>
+              <option value="set09">⚡ ชุดที่ 09: ค่าไฟฟ้ารายเดือนของอาคาร (electricity) [PK: เดือน+อาคาร]</option>
+              <option value="set10">💻 ชุดที่ 10: ทะเบียนทรัพย์สิน IT (itassets) [PK: รหัสทรัพย์สิน]</option>
+              <option value="set11">📦 ชุดที่ 11: รับสินค้าเข้าคลัง (goodsreceipt) [PK: เลขที่ใบรับ]</option>
+              <option value="set12">📋 ชุดที่ 12: บันทึกผู้มาติดต่อ (visitors) [PK: เลขบัตร]</option>
+            </select>
+          </div>
+          <p id="datasetInfoText" class="text-xs text-slate-500 projector-text-muted">
+            คอลัมน์ตรวจสอบ: รหัสอะไหล่, ชื่ออะไหล่, หมวด, คงเหลือ, หน่วย, จุดสั่งซื้อ, ที่เก็บ
+          </p>
+        </div>
+
+        <!-- Demo Buttons & Reset -->
+        <div class="lg:col-span-7 flex flex-wrap items-center justify-start lg:justify-end gap-2.5 pt-2 lg:pt-0">
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider mr-1 hidden sm:inline">
+            ทดสอบในห้องเรียน:
+          </span>
+
+          <button id="loadDirtyDemoBtn" type="button"
+                  class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 hover:border-rose-300 active:scale-95 transition-all shadow-sm">
+            <span>🚨</span>
+            <span>โหลดไฟล์โจทย์ (Dirty: 0/18)</span>
+          </button>
+
+          <button id="loadCleanDemoBtn" type="button"
+                  class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300 active:scale-95 transition-all shadow-sm">
+            <span>✨</span>
+            <span>โหลดเฉลยสมบูรณ์ (Ground Truth: 18/18)</span>
+          </button>
+
+          <button id="resetDataBtn" type="button"
+                  class="flex items-center gap-1 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200 active:scale-95 transition-all shadow-sm"
+                  title="ล้างข้อมูลและเริ่มต้นใหม่">
+            <span>🗑️</span>
+            <span>รีเซ็ต</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Section 2: Large Drag & Drop CSV Dropzone -->
+    <div id="dropzone" 
+         class="projector-card relative border-2 border-dashed border-slate-300 bg-white hover:border-blue-400 hover:bg-blue-50/20 rounded-2xl p-7 text-center cursor-pointer transition-all duration-200 shadow-sm group">
+      <input type="file" id="fileInput" accept=".csv,text/csv" class="hidden">
+      
+      <div class="flex flex-col items-center justify-center space-y-3">
+        <div class="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center text-3xl group-hover:scale-110 group-hover:bg-blue-100 transition-all shadow-inner">
+          📥
+        </div>
+        <div>
+          <p class="text-base sm:text-lg font-bold font-heading text-slate-800">
+            ลากและวางไฟล์ CSV ของนักเรียนที่นี่ (Drag & Drop Student CSV)
+          </p>
+          <p class="text-xs sm:text-sm text-slate-500 mt-1 projector-text-muted">
+            หรือคลิกที่บริเวณนี้เพื่อเลือกไฟล์จากเครื่อง (รองรับ UTF-8 มี/ไม่มี BOM, จัดเรียง Primary Key อัตโนมัติ)
+          </p>
+        </div>
+        <div class="inline-flex items-center gap-2 text-xs font-medium text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-200">
+          <span>⚡ Smart PK Alignment: ป้องกันปัญหาแถวสลับ / แถวแทรก / แถวตกหล่น</span>
+        </div>
+      </div>
+
+      <!-- Loaded File Status Strip (hidden until file loaded) -->
+      <div id="fileLoadedBanner" class="hidden mt-4 pt-4 border-t border-slate-200 flex items-center justify-between text-left text-xs sm:text-sm">
+        <div class="flex items-center gap-2 text-slate-700">
+          <span class="text-emerald-500 text-base">📄</span>
+          <span class="font-bold" id="loadedFileName">set06_spareparts.csv</span>
+          <span class="text-slate-400" id="loadedFileSize">(1.8 KB)</span>
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-100 text-emerald-800" id="loadedRowCountBadge">20 แถว</span>
+        </div>
+        <div class="text-xs text-slate-400" id="loadedDetectStatus">
+          ตรวจจับด้วย Primary Key
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 3: Dual Score & Metrics Dashboard -->
+    <div id="scoreDashboard" class="space-y-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <!-- Metric Card 1: Official 18 Rubric Score -->
+        <div class="projector-card bg-white rounded-2xl border border-slate-200 p-5 shadow-sm relative overflow-hidden">
+          <div class="flex items-center justify-between text-slate-500 mb-2">
+            <span class="text-xs sm:text-sm font-bold font-heading uppercase tracking-wide">คะแนนเกณฑ์ประเมิน (Rubric)</span>
+            <span class="text-lg">🎯</span>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <span id="rubricScoreDisplay" class="metric-number text-4xl sm:text-5xl font-black font-heading text-slate-900 tracking-tight">
+              --
+            </span>
+            <span class="text-base sm:text-lg font-bold text-slate-400">/ 18 คะแนน</span>
+          </div>
+          
+          <!-- Difficulty breakdown pills -->
+          <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span class="inline-flex items-center gap-1 text-emerald-700 font-semibold">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>ง่าย: <span id="easyScoreDisplay">-/-</span>
+            </span>
+            <span class="inline-flex items-center gap-1 text-blue-700 font-semibold">
+              <span class="w-2 h-2 rounded-full bg-blue-500"></span>กลาง: <span id="medScoreDisplay">-/-</span>
+            </span>
+            <span class="inline-flex items-center gap-1 text-purple-700 font-semibold">
+              <span class="w-2 h-2 rounded-full bg-purple-500"></span>ยาก: <span id="hardScoreDisplay">-/-</span>
+            </span>
+          </div>
+
+          <!-- Progress bar -->
+          <div class="w-full bg-slate-100 h-1.5 rounded-full mt-3 overflow-hidden">
+            <div id="rubricProgressBar" class="bg-blue-600 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Metric Card 2: Stakeholder Star Questions -->
+        <div class="projector-card bg-white rounded-2xl border border-slate-200 p-5 shadow-sm relative overflow-hidden">
+          <div class="flex items-center justify-between text-slate-500 mb-2">
+            <span class="text-xs sm:text-sm font-bold font-heading uppercase tracking-wide">ข้อดาวสัมภาษณ์เจ้าของ (Star)</span>
+            <span class="text-lg text-amber-500">⭐</span>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <span id="starScoreDisplay" class="metric-number text-4xl sm:text-5xl font-black font-heading text-amber-500 tracking-tight">
+              ★ --
+            </span>
+            <span id="starMaxDisplay" class="text-base sm:text-lg font-bold text-slate-400">/ 5 ข้อ</span>
+          </div>
+          <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <span id="starMasteryText">ทักษะการคุยกับผู้มีส่วนได้ส่วนเสีย</span>
+            <span id="starIcons" class="text-amber-400 tracking-widest font-bold">☆☆☆☆☆</span>
+          </div>
+          <div class="w-full bg-slate-100 h-1.5 rounded-full mt-3 overflow-hidden">
+            <div id="starProgressBar" class="bg-amber-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Metric Card 3: Cell-by-Cell Accuracy -->
+        <div class="projector-card bg-white rounded-2xl border border-slate-200 p-5 shadow-sm relative overflow-hidden">
+          <div class="flex items-center justify-between text-slate-500 mb-2">
+            <span class="text-xs sm:text-sm font-bold font-heading uppercase tracking-wide">ความถูกต้องรายเซลล์ (Accuracy)</span>
+            <span class="text-lg">📊</span>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <span id="accuracyDisplay" class="metric-number text-4xl sm:text-5xl font-black font-heading text-slate-900 tracking-tight">
+              --%
+            </span>
+          </div>
+          <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <span id="cellCountDisplay">-- / -- เซลล์ถูกต้อง</span>
+            <span id="accuracyBadge" class="px-2 py-0.5 rounded font-bold bg-slate-100 text-slate-600">-</span>
+          </div>
+          <div class="w-full bg-slate-100 h-1.5 rounded-full mt-3 overflow-hidden">
+            <div id="accuracyProgressBar" class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Metric Card 4: Row Completeness & Duplicate/Missing Alert -->
+        <div class="projector-card bg-white rounded-2xl border border-slate-200 p-5 shadow-sm relative overflow-hidden">
+          <div class="flex items-center justify-between text-slate-500 mb-2">
+            <span class="text-xs sm:text-sm font-bold font-heading uppercase tracking-wide">ความสมบูรณ์แถว (Row Integrity)</span>
+            <span class="text-lg">📋</span>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <span id="rowCountDisplay" class="metric-number text-4xl sm:text-5xl font-black font-heading text-slate-900 tracking-tight">
+              --
+            </span>
+            <span class="text-base sm:text-lg font-bold text-slate-400">/ 18 แถว</span>
+          </div>
+          <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <span id="rowStatusDetail">ยังไม่มีการโหลดข้อมูล</span>
+            <span id="rowIntegrityBadge" class="px-2 py-0.5 rounded font-bold bg-slate-100 text-slate-600">พร้อมตรวจ</span>
+          </div>
+          <div class="w-full bg-slate-100 h-1.5 rounded-full mt-3 overflow-hidden">
+            <div id="rowProgressBar" class="bg-indigo-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Column Accuracy Progress Bar Widget -->
+      <div id="columnAccuracyContainer" class="hidden projector-card bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <h4 class="text-xs sm:text-sm font-bold font-heading text-slate-700 flex items-center gap-2">
+            <span>📊 อัตราความถูกต้องรายคอลัมน์ (Column Breakdown)</span>
+            <span class="text-xs font-normal text-slate-400">ช่วยระบุจุดที่นักเรียนทำผิดมากที่สุด</span>
+          </h4>
+          <span class="text-xs text-slate-400" id="columnHeaderCount">7 คอลัมน์</span>
+        </div>
+        <div id="columnBarsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 4: Interactive 18 Checkpoints Accordion / Drawer -->
+    <div class="projector-card bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      
+      <!-- Accordion Header Bar -->
+      <div id="toggleCheckpointsBtn" 
+           class="p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 cursor-pointer bg-slate-50/70 hover:bg-slate-100/80 transition-colors border-b border-slate-200 select-none">
+        <div class="flex items-center gap-3">
+          <span id="checkpointsAccordionIcon" class="text-base transition-transform duration-200 transform rotate-180">▼</span>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold font-heading text-slate-900 flex items-center gap-2">
+              <span>📋 รายละเอียด 18 เกณฑ์ประเมิน (Official Rubric Checklist)</span>
+              <span id="checkpointSummaryBadge" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
+                18 ข้อ
+              </span>
+            </h3>
+            <p class="text-xs text-slate-500 projector-text-muted">
+              เกณฑ์จากใบเฉลยอย่างเป็นทางการ แบ่งตามระดับ ง่าย (1 แต้ม), กลาง (1 แต้ม), ยาก (1 แต้ม) และข้อดาวสัมภาษณ์
+            </p>
+          </div>
+        </div>
+
+        <!-- Filter Chips -->
+        <div class="flex items-center flex-wrap gap-1.5" onclick="event.stopPropagation()">
+          <button type="button" data-filter="all" class="checkpoint-filter-btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm">
+            ทั้งหมด (18)
+          </button>
+          <button type="button" data-filter="failed" class="checkpoint-filter-btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200">
+            ❌ ไม่ผ่าน
+          </button>
+          <button type="button" data-filter="passed" class="checkpoint-filter-btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200">
+            ✅ ผ่านแล้ว
+          </button>
+          <button type="button" data-filter="star" class="checkpoint-filter-btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200">
+            ⭐ ข้อดาว
+          </button>
+        </div>
+      </div>
+
+      <!-- Accordion Body: Checkpoint Cards Grid -->
+      <div id="checkpointsDrawerBody" class="p-4 sm:p-5">
+        <div id="checkpointsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+          <!-- Dynamically populated -->
+          <div class="col-span-full py-8 text-center text-slate-400">
+            ยังไม่ได้ประเมินข้อมูล กรุณาโหลดไฟล์ตัวอย่างหรือลากไฟล์ CSV มาวาง
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Section 5: Large Screen Interactive Diff Table -->
+    <div class="projector-card bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      
+      <!-- Table Header & Filter Bar -->
+      <div class="p-4 sm:p-5 border-b border-slate-200 bg-slate-50/70 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 class="text-base sm:text-lg font-bold font-heading text-slate-900 flex items-center gap-2">
+            <span>ตารางเปรียบเทียบข้อมูลรายแถวและรายเซลล์ (Diff Matrix)</span>
+          </h3>
+          <p class="text-xs text-slate-500 projector-text-muted mt-0.5" id="tableSubtitle">
+            จัดเรียงตาม Primary Key อัตโนมัติ | คลิกที่เซลล์สีแดงเพื่อดูเฉลยและวิธีแก้ไข
+          </p>
+        </div>
+
+        <!-- Legend and Display Filter -->
+        <div class="flex items-center flex-wrap gap-2 text-xs">
+          <!-- Legend Badges -->
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold">
+            <span class="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span> ข้อมูลถูกต้อง
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-rose-50 text-rose-800 border border-rose-200 font-semibold">
+            <span class="w-2.5 h-2.5 rounded-sm bg-rose-500"></span> ผิด (คลิกดูเฉลย)
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 border border-amber-200 font-semibold">
+            <span class="w-2.5 h-2.5 rounded-sm bg-amber-500"></span> แถวเกิน/ลืมลบ
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-purple-50 text-purple-800 border border-purple-200 font-semibold">
+            <span class="w-2.5 h-2.5 rounded-sm bg-purple-500"></span> แถวขาดหาย
+          </span>
+
+          <!-- Filter Errors Only Button -->
+          <button id="toggleFilterErrorsBtn" type="button"
+                  class="ml-2 px-3 py-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold shadow-sm active:scale-95 transition-all">
+            🔍 กรองเฉพาะแถวที่ผิด
+          </button>
+        </div>
+      </div>
+
+      <!-- Extra Rows Banner (Unremoved duplicates / unexpected) -->
+      <div id="extraRowsBanner" class="hidden bg-amber-50 border-b border-amber-200 px-5 py-3 text-amber-900 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">⚠️</span>
+          <div>
+            <span class="font-bold font-heading">พบแถวเกินที่ไม่ได้ลบออก:</span>
+            <span id="extraRowsCountText" class="text-sm ml-1">2 แถว (เช่น แถวซ้ำหรือแถวผิด PK)</span>
+          </div>
+        </div>
+        <span class="text-xs bg-amber-200/80 px-2 py-0.5 rounded font-semibold text-amber-900">
+          ต้องลบออกในกระบวนการคลีน
+        </span>
+      </div>
+
+      <!-- Missing Rows Banner -->
+      <div id="missingRowsBanner" class="hidden bg-purple-50 border-b border-purple-200 px-5 py-3 text-purple-900 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🚨</span>
+          <div>
+            <span class="font-bold font-heading">พบแถวขาดหายไปจาก Ground Truth:</span>
+            <span id="missingRowsCountText" class="text-sm ml-1">0 แถว</span>
+          </div>
+        </div>
+        <span class="text-xs bg-purple-200/80 px-2 py-0.5 rounded font-semibold text-purple-900">
+          นักเรียนอาจเผลอลบแถวข้อมูลจริงทิ้ง
+        </span>
+      </div>
+
+      <!-- Interactive Table Scroll Container -->
+      <div class="overflow-x-auto max-h-[650px] relative">
+        <table id="diffTable" class="w-full text-left border-collapse text-sm">
+          <thead class="bg-slate-100 text-slate-700 font-heading text-xs uppercase tracking-wider sticky top-0 z-20 shadow-sm border-b border-slate-200">
+            <tr id="tableHeadRow">
+              <th class="px-4 py-3 border-r border-slate-200 w-16 text-center">#</th>
+              <th class="px-4 py-3 border-r border-slate-200 font-bold text-blue-700">🔑 Primary Key</th>
+              <!-- Headers added dynamically -->
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="divide-y divide-slate-200 font-sans">
+            <tr>
+              <td colspan="8" class="py-16 text-center text-slate-400">
+                ยังไม่มีข้อมูลที่จะแสดง กรุณาโหลดไฟล์ตัวอย่างหรือลากไฟล์ CSV ของนักเรียนมาวาง
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Table Footer Summary -->
+      <div class="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 font-medium">
+        <span id="tableRowsInfo">0 แถว</span>
+        <span id="tableSummaryTip">💡 ทิป: คลิกที่เซลล์สีแดงเพื่อเปิดดูคำอธิบายจากใบเฉลย</span>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Interactive Pedagogical Explanation Modal / Popover -->
+  <div id="explanationModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden"
+       onclick="if(event.target === this) closeModal();">
+    <div class="modal-animate projector-card bg-white rounded-2xl border border-slate-200 max-w-xl w-full p-6 shadow-2xl relative overflow-hidden" onclick="event.stopPropagation()">
+      
+      <!-- Modal Header -->
+      <div class="flex items-start justify-between pb-4 border-b border-slate-200">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span id="modalCheckpointNum" class="px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
+              ข้อที่ #--
+            </span>
+            <span id="modalDifficultyBadge" class="px-2 py-0.5 rounded text-xs font-bold bg-slate-100 text-slate-700">
+              ระดับ: กลาง
+            </span>
+            <span id="modalStarBadge" class="hidden px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800">
+              ⭐ ต้องถามเจ้าของข้อมูล
+            </span>
+          </div>
+          <h3 id="modalColumnTitle" class="text-xl font-bold font-heading text-slate-900">
+            คอลัมน์: --
+          </h3>
+          <p id="modalPkSubtitle" class="text-xs text-slate-500 mt-0.5">
+            แถว Primary Key: --
+          </p>
+        </div>
+        <button type="button" onclick="closeModal()" 
+                class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-lg font-bold transition-colors">
+          ✕
+        </button>
+      </div>
+
+      <!-- Comparison Box: Student vs Ground Truth -->
+      <div class="grid grid-cols-2 gap-3 my-5">
+        <div class="bg-rose-50 border border-rose-200 rounded-xl p-3.5">
+          <span class="text-xs font-bold text-rose-700 uppercase tracking-wide block mb-1">
+            ❌ ค่าที่นักเรียนส่งมา (Student)
+          </span>
+          <div id="modalStudentVal" class="text-base font-bold text-rose-900 font-mono break-all">
+            --
+          </div>
+        </div>
+        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5">
+          <span class="text-xs font-bold text-emerald-700 uppercase tracking-wide block mb-1">
+            ✅ ค่าเฉลยที่ถูกต้อง (Ground Truth)
+          </span>
+          <div id="modalGtVal" class="text-base font-bold text-emerald-900 font-mono break-all">
+            --
+          </div>
+        </div>
+      </div>
+
+      <!-- Official Explanation Card -->
+      <div class="space-y-3">
+        <div class="bg-blue-50/70 border border-blue-200 rounded-xl p-4">
+          <div class="flex items-center gap-2 text-blue-800 font-bold font-heading text-sm mb-1.5">
+            <span>💡 คำอธิบายและเทคนิคจากใบเฉลย</span>
+          </div>
+          <p id="modalExplanation" class="text-sm text-slate-700 leading-relaxed font-normal">
+            --
+          </p>
+        </div>
+
+        <!-- Flaw Note in Original File -->
+        <div id="modalFlawContainer" class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-600 flex items-start gap-2">
+          <span class="text-base">📌</span>
+          <div>
+            <span class="font-bold text-slate-700">ข้อผิดพลาดเดิมในโจทย์:</span>
+            <span id="modalFlawText" class="ml-1">--</span>
+          </div>
+        </div>
+
+        <!-- Stakeholder Note if Ask Owner -->
+        <div id="modalAskOwnerBox" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-900 flex items-start gap-2">
+          <span class="text-base">⭐</span>
+          <div>
+            <span class="font-bold">หมายเหตุสำคัญ (Stakeholder Interview):</span>
+            <span class="ml-1">จุดนี้เป็นข้อดาว ต้องอาศัยการสอบถามเจ้าของข้อมูล ไม่สามารถคาดเดาหรือเขียนสูตรแปลงได้เอง</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Button -->
+      <div class="mt-6 flex justify-end">
+        <button type="button" onclick="closeModal()" 
+                class="px-5 py-2.5 rounded-xl bg-slate-900 text-white font-semibold text-sm hover:bg-slate-800 active:scale-95 transition-all shadow-md">
+          ปิดหน้าต่าง (Close)
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Application Logic -->
+  <script>
+    (function () {
+      // Check if required dependencies are present
+      if (typeof window.DATASETS_REGISTRY === 'undefined' || typeof window.DiffEngine === 'undefined') {
+        const alertEl = document.getElementById('missingScriptsAlert');
+        if (alertEl) alertEl.classList.remove('hidden');
+        console.error("Missing datasets_registry.js or diff_engine.js");
+      }
+
+      // State Management
+      let currentSetId = 'set06';
+      let currentDatasetConfig = null;
+      let currentEvaluation = null;
+      let currentParsedRows = null;
+      let isProjectorMode = false;
+      let isRevealAll = false;
+      let isErrorsOnlyFilter = false;
+      let currentCheckpointFilter = 'all';
+
+      // Raw dirty CSV embedded for set06 (instant test)
+      const RAW_SET06_CSV = `รหัสอะไหล่,ชื่ออะไหล่,หมวด,คงเหลือ,หน่วย,จุดสั่งซื้อ,ที่เก็บ
+SP-0101,ลูกปืน 6205,เครื่องกล,4,ตัว,5,B2
+SP-0102,สายพาน B52,Mechanical,1,เส้น,2,A3
+SP-O103,ฟิวส์ 10A,ไฟฟ้า,1,ชิ้น,2,B1
+SP-0104,คอนแทคเตอร์ 3 เฟส,ไฟฟ้า,13 ตัว,ตัว,5,B2
+SP-0105,หลอด LED 18W,ไฟฟ้า,20,ดวง,20,B2
+SP-0106,สายไฟ VCT 2x1.5,ไฟฟ้า,-10,เมตร,10,B2
+SP-0107,ข้อต่อลม 1/4 นิ้ว,ระบบลม,,ชิ้น,2,C2
+SP-0108,ท่อลม PU 8mm,ระบบลม,115,เมตร,100,C2
+SP-0109,โซลินอยด์วาล์ว,ระบบลม,20,ตัว,20,C1
+SP-0110,ซีลยาง 40 มม.,เครื่องกล,10,ชิ้น,10,A1
+SP-0110,ซีลยาง 40 มม.,เครื่องกล,10,ชิ้น,10,A1
+SP-0111,น้ำมันหล่อลื่น,เครื่องกล,5,แกลลอน,2,A1
+SP-0112,รีเลย์ 24,ไฟฟ้า,17,ตัว,2,B2
+SP-0113,เบรกเกอร์ 32A,ไฟฟ้า/อิเล็กทรอนิกส์,4,ตัว,5,B3
+SP-0114,กรองลม,ระบบลม,2,ชิ้น,2,c1
+SP-0115,เกจวัดแรงดัน,ระบบลม,2,ตัว,2,ชั้น C2
+SP-0116,โซ่ส่งกำลัง 40,เครื่องกล,85,ม.,10,A1
+SP-0117,มอเตอร์พัดลม,ไฟฟ้า,170,ตัว,2,B1
+SP-0118,ปะเก็นหน้าแปลน,เครื่องกล,35.0,ชิ้น,20,A3
+SP-0109,โซลินอยด์วาล์ว,ระบบลม,18,ตัว,20,C1`;
+
+      // Helper: Generate dirty uncleaned rows dynamically for any dataset based on rubric
+      function generateDirtyRows(config) {
+        if (!config || !config.groundTruthRows) return [];
+        // Deep clone Ground Truth rows
+        const rows = JSON.parse(JSON.stringify(config.groundTruthRows));
+        const rubric = config.rubric || [];
+
+        const dupItems = rubric.filter(r => r.col === '(ทั้งแถว)');
+        const delIndices = [];
+        dupItems.forEach(d => {
+          const nums = (String(d.origRow).match(/\d+/g) || []).map(Number);
+          if (nums.length > 0) delIndices.push(Math.max(...nums));
+        });
+        delIndices.sort((a, b) => a - b);
+
+        // 1. Revert cell values
+        rubric.forEach(r => {
+          if (r.col !== '(ทั้งแถว)') {
+            const nums = (String(r.origRow).match(/\d+/g) || []).map(Number);
+            const rawRow = nums.length > 0 ? Math.min(...nums) : 1;
+            const shift = delIndices.filter(di => di < rawRow).length;
+            const gtIndex = Math.max(0, Math.min(rows.length - 1, rawRow - 1 - shift));
+            
+            let dirtyVal = r.origVal;
+            if (dirtyVal === '(ว่าง)') dirtyVal = '';
+            if (rows[gtIndex] && r.col in rows[gtIndex]) {
+              rows[gtIndex][r.col] = dirtyVal;
+            }
+          }
+        });
+
+        // 2. Insert duplicate / extra rows
+        const insertions = [];
+        dupItems.forEach(r => {
+          const nums = (String(r.origRow).match(/\d+/g) || []).map(Number);
+          const m = (r.correctVal || '').match(/ลบ\s+([A-Za-z0-9\-_]+)/);
+          if (m) {
+            const bogusPk = m[1].trim();
+            const bogusRow = Object.assign({}, rows[0] || {});
+            config.pkCols.forEach(pk => { bogusRow[pk] = bogusPk; });
+            insertions.push({ index: (nums.length > 0 ? Math.max(...nums) - 1 : rows.length), row: bogusRow });
+          } else {
+            const targetIdx = nums.length > 0 ? Math.min(...nums) - 1 : 0;
+            const dupRow = Object.assign({}, rows[targetIdx] || rows[0]);
+            insertions.push({ index: (nums.length > 0 ? Math.max(...nums) - 1 : rows.length), row: dupRow });
+          }
+        });
+
+        insertions.sort((a, b) => b.index - a.index);
+        insertions.forEach(ins => {
+          const insertAt = Math.min(rows.length, Math.max(0, ins.index));
+          rows.splice(insertAt, 0, ins.row);
+        });
+
+        return rows;
+      }
+
+      // Helper: HTML escape
+      function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
+      // Auto-detection logic by filename pattern or header overlap
+      function detectDataset(filename, headers) {
+        if (!window.DATASETS_REGISTRY) return null;
+        const lowerName = (filename || '').toLowerCase();
+
+        // 1. Check filename patterns
+        for (const [id, config] of Object.entries(window.DATASETS_REGISTRY)) {
+          if (config.filenamePattern) {
+            const regex = new RegExp(config.filenamePattern, 'i');
+            if (regex.test(lowerName)) {
+              return { id, config, reason: `ตรงกับชื่อไฟล์ (${config.name})` };
+            }
+          }
+          if (lowerName.includes(id) || lowerName.includes(`set_${id.replace('set','')}`) || lowerName.includes(`set-${id.replace('set','')}`)) {
+            return { id, config, reason: `ตรงกับรหัสโจทย์ ${id}` };
+          }
+          if (config.name && lowerName.includes(config.name.toLowerCase())) {
+            return { id, config, reason: `มีชื่อภาษาไทย "${config.name}"` };
+          }
+        }
+
+        // 2. Check column headers similarity
+        if (headers && headers.length > 0) {
+          const cleanHeaders = headers.map(h => String(h).trim().replace(/^\uFEFF/, ''));
+          let bestId = null;
+          let bestOverlap = 0;
+
+          for (const [id, config] of Object.entries(window.DATASETS_REGISTRY)) {
+            const cfgHeaders = config.headers || [];
+            const overlap = cleanHeaders.filter(h => cfgHeaders.includes(h)).length;
+            if (overlap > bestOverlap && overlap >= 3) {
+              bestOverlap = overlap;
+              bestId = id;
+            }
+          }
+
+          if (bestId) {
+            return {
+              id: bestId,
+              config: window.DATASETS_REGISTRY[bestId],
+              reason: `พบคอลัมน์ตรงกัน ${bestOverlap} คอลัมน์`
+            };
+          }
+        }
+
+        return null;
+      }
+
+      // Robust CSV Parser: PapaParse with DiffEngine.parseCsv fallback
+      function parseCsvInput(fileOrString, callback) {
+        // Mode 1: PapaParse available
+        if (typeof window.Papa !== 'undefined' && window.Papa.parse) {
+          if (fileOrString instanceof File) {
+            window.Papa.parse(fileOrString, {
+              header: true,
+              skipEmptyLines: 'greedy',
+              encoding: 'utf-8',
+              complete: function (results) {
+                callback(null, results.data, results.meta.fields || []);
+              },
+              error: function (err) {
+                callback(err, null, []);
+              }
+            });
+            return;
+          } else if (typeof fileOrString === 'string') {
+            const res = window.Papa.parse(fileOrString, {
+              header: true,
+              skipEmptyLines: 'greedy'
+            });
+            callback(null, res.data, res.meta.fields || []);
+            return;
+          }
+        }
+
+        // Mode 2: DiffEngine.parseCsv fallback (100% offline)
+        if (window.DiffEngine && window.DiffEngine.parseCsv) {
+          if (fileOrString instanceof File) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+              const text = e.target.result;
+              const rows = window.DiffEngine.parseCsv(text);
+              const headers = rows.length > 0 ? Object.keys(rows[0]) : [];
+              callback(null, rows, headers);
+            };
+            reader.onerror = function (err) {
+              callback(err, null, []);
+            };
+            reader.readAsText(fileOrString, 'utf-8');
+            return;
+          } else if (typeof fileOrString === 'string') {
+            const rows = window.DiffEngine.parseCsv(fileOrString);
+            const headers = rows.length > 0 ? Object.keys(rows[0]) : [];
+            callback(null, rows, headers);
+            return;
+          }
+        }
+
+        callback(new Error("ไม่สามารถอ่านข้อมูล CSV ได้"), null, []);
+      }
+
+      // Initialize dataset config
+      function setDataset(setId, autoDetectedReason = null) {
+        if (!window.DATASETS_REGISTRY || !window.DATASETS_REGISTRY[setId]) return;
+        currentSetId = setId;
+        currentDatasetConfig = window.DATASETS_REGISTRY[setId];
+
+        const selectEl = document.getElementById('datasetSelect');
+        if (selectEl && selectEl.value !== setId) {
+          selectEl.value = setId;
+        }
+
+        // Update info text
+        const infoEl = document.getElementById('datasetInfoText');
+        if (infoEl) {
+          infoEl.textContent = `คอลัมน์ตรวจสอบ: ${currentDatasetConfig.headers.join(', ')} (PK: ${currentDatasetConfig.pkCols.join(' + ')})`;
+        }
+
+        // Update auto-detect badge
+        const badgeEl = document.getElementById('autoDetectBadge');
+        if (badgeEl) {
+          if (autoDetectedReason) {
+            badgeEl.className = 'inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold border border-emerald-200 animate-pulse';
+            badgeEl.textContent = `🤖 ตรวจพบอัตโนมัติ: ${autoDetectedReason}`;
+          } else {
+            badgeEl.className = 'inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 font-normal border border-slate-200';
+            badgeEl.textContent = `🎯 เลือก: ${currentDatasetConfig.name}`;
+          }
+        }
+
+        // Re-evaluate if rows already loaded
+        if (currentParsedRows && currentParsedRows.length > 0) {
+          evaluateAndRender(currentParsedRows);
+        }
+      }
+
+      // Core: Run evaluation and update all UI views
+      function evaluateAndRender(rows) {
+        if (!currentDatasetConfig || !window.DiffEngine) return;
+
+        currentParsedRows = rows;
+        currentEvaluation = window.DiffEngine.evaluateStudentData(rows, currentDatasetConfig);
+
+        renderScoreDashboard(currentEvaluation);
+        renderCheckpointsList(currentEvaluation);
+        renderDiffTable(currentEvaluation);
+      }
+
+      // Render Score Dashboard & Metric Cards
+      function renderScoreDashboard(evalRes) {
+        const rubricScoreEl = document.getElementById('rubricScoreDisplay');
+        const rubricProgEl = document.getElementById('rubricProgressBar');
+        const easyScoreEl = document.getElementById('easyScoreDisplay');
+        const medScoreEl = document.getElementById('medScoreDisplay');
+        const hardScoreEl = document.getElementById('hardScoreDisplay');
+
+        // Difficulty counts
+        let easyPass = 0, easyTotal = 0;
+        let medPass = 0, medTotal = 0;
+        let hardPass = 0, hardTotal = 0;
+
+        evalRes.rubricResults.forEach(r => {
+          const lvl = r.item.level;
+          if (lvl === 'ง่าย') {
+            easyTotal++;
+            if (r.passed) easyPass++;
+          } else if (lvl === 'กลาง') {
+            medTotal++;
+            if (r.passed) medPass++;
+          } else if (lvl === 'ยาก') {
+            hardTotal++;
+            if (r.passed) hardPass++;
+          }
+        });
+
+        // 1. Rubric Score
+        rubricScoreEl.textContent = `${evalRes.rubricScore}`;
+        const rubricPct = (evalRes.rubricScore / evalRes.rubricMax) * 100;
+        rubricProgEl.style.width = `${rubricPct}%`;
+        if (rubricPct === 100) {
+          rubricScoreEl.className = 'metric-number text-4xl sm:text-5xl font-black font-heading text-emerald-600 tracking-tight';
+          rubricProgEl.className = 'bg-emerald-500 h-full rounded-full transition-all duration-500';
+        } else if (rubricPct >= 70) {
+          rubricScoreEl.className = 'metric-number text-4xl sm:text-5xl font-black font-heading text-blue-600 tracking-tight';
+          rubricProgEl.className = 'bg-blue-600 h-full rounded-full transition-all duration-500';
+        } else {
+          rubricScoreEl.className = 'metric-number text-4xl sm:text-5xl font-black font-heading text-rose-600 tracking-tight';
+          rubricProgEl.className = 'bg-rose-500 h-full rounded-full transition-all duration-500';
+        }
+
+        easyScoreEl.textContent = `${easyPass}/${easyTotal}`;
+        medScoreEl.textContent = `${medPass}/${medTotal}`;
+        hardScoreEl.textContent = `${hardPass}/${hardTotal}`;
+
+        // 2. Star Questions Score
+        const starScoreEl = document.getElementById('starScoreDisplay');
+        const starMaxEl = document.getElementById('starMaxDisplay');
+        const starIconsEl = document.getElementById('starIcons');
+        const starProgEl = document.getElementById('starProgressBar');
+        const starMasteryEl = document.getElementById('starMasteryText');
+
+        starScoreEl.textContent = `★ ${evalRes.starScore}`;
+        starMaxEl.textContent = `/ ${evalRes.starMax} ข้อ`;
+        const starPct = evalRes.starMax > 0 ? (evalRes.starScore / evalRes.starMax) * 100 : 0;
+        starProgEl.style.width = `${starPct}%`;
+
+        let stars = '';
+        for (let i = 0; i < evalRes.starMax; i++) {
+          stars += (i < evalRes.starScore) ? '★' : '☆';
+        }
+        starIconsEl.textContent = stars;
+
+        if (evalRes.starScore === evalRes.starMax && evalRes.starMax > 0) {
+          starMasteryEl.textContent = 'ยอดเยี่ยม! สอบถามผู้มีส่วนได้เสียครบถ้วน';
+          starMasteryEl.className = 'text-xs text-amber-600 font-bold';
+        } else {
+          starMasteryEl.textContent = 'ทักษะการคุยกับผู้มีส่วนได้ส่วนเสีย';
+          starMasteryEl.className = 'text-xs text-slate-500';
+        }
+
+        // 3. Cell Accuracy
+        const accuracyEl = document.getElementById('accuracyDisplay');
+        const cellCountEl = document.getElementById('cellCountDisplay');
+        const accuracyBadgeEl = document.getElementById('accuracyBadge');
+        const accuracyProgEl = document.getElementById('accuracyProgressBar');
+
+        accuracyEl.textContent = `${evalRes.accuracyPct}%`;
+        cellCountEl.textContent = `${evalRes.correctCells} / ${evalRes.totalCells} เซลล์ถูกต้อง`;
+        accuracyProgEl.style.width = `${evalRes.accuracyPct}%`;
+
+        if (evalRes.accuracyPct >= 95) {
+          accuracyBadgeEl.textContent = 'ยอดเยี่ยม';
+          accuracyBadgeEl.className = 'px-2 py-0.5 rounded font-bold bg-emerald-100 text-emerald-800';
+          accuracyProgEl.className = 'bg-emerald-500 h-full rounded-full transition-all duration-500';
+        } else if (evalRes.accuracyPct >= 80) {
+          accuracyBadgeEl.textContent = 'ดี';
+          accuracyBadgeEl.className = 'px-2 py-0.5 rounded font-bold bg-blue-100 text-blue-800';
+          accuracyProgEl.className = 'bg-blue-500 h-full rounded-full transition-all duration-500';
+        } else {
+          accuracyBadgeEl.textContent = 'ต้องปรับปรุง';
+          accuracyBadgeEl.className = 'px-2 py-0.5 rounded font-bold bg-rose-100 text-rose-800';
+          accuracyProgEl.className = 'bg-rose-500 h-full rounded-full transition-all duration-500';
+        }
+
+        // 4. Row Integrity
+        const rowCountEl = document.getElementById('rowCountDisplay');
+        const rowStatusDetailEl = document.getElementById('rowStatusDetail');
+        const rowIntegrityBadgeEl = document.getElementById('rowIntegrityBadge');
+        const rowProgEl = document.getElementById('rowProgressBar');
+
+        const totalStudentRows = evalRes.matchedRows.length + evalRes.extraRows.length;
+        const gtRowsCount = currentDatasetConfig.groundTruthRows.length;
+        rowCountEl.textContent = `${totalStudentRows}`;
+
+        const extraCount = evalRes.extraRows.length;
+        const missingCount = evalRes.missingRows.length;
+
+        if (extraCount === 0 && missingCount === 0) {
+          rowStatusDetailEl.textContent = `${gtRowsCount}/${gtRowsCount} แถวครบถ้วนตรงตาม Ground Truth`;
+          rowIntegrityBadgeEl.textContent = 'ครบถ้วนสมบูรณ์';
+          rowIntegrityBadgeEl.className = 'px-2 py-0.5 rounded font-bold bg-emerald-100 text-emerald-800';
+          rowProgEl.style.width = '100%';
+          rowProgEl.className = 'bg-emerald-500 h-full rounded-full transition-all duration-500';
+        } else {
+          const issues = [];
+          if (extraCount > 0) issues.push(`+${extraCount} แถวเกิน`);
+          if (missingCount > 0) issues.push(`-${missingCount} แถวขาด`);
+          rowStatusDetailEl.textContent = issues.join(', ');
+          rowIntegrityBadgeEl.textContent = 'พบแถวผิดปกติ';
+          rowIntegrityBadgeEl.className = 'px-2 py-0.5 rounded font-bold bg-rose-100 text-rose-800';
+          rowProgEl.style.width = `${Math.min(100, (evalRes.matchedRows.length / gtRowsCount) * 100)}%`;
+          rowProgEl.className = 'bg-amber-500 h-full rounded-full transition-all duration-500';
+        }
+
+        // 5. Column Accuracy Breakdown Bars
+        renderColumnAccuracyBars(evalRes);
+      }
+
+      // Render Column Accuracy Bars
+      function renderColumnAccuracyBars(evalRes) {
+        const container = document.getElementById('columnAccuracyContainer');
+        const grid = document.getElementById('columnBarsGrid');
+        const countHeader = document.getElementById('columnHeaderCount');
+        if (!container || !grid) return;
+
+        container.classList.remove('hidden');
+        grid.innerHTML = '';
+        const headers = currentDatasetConfig.headers || [];
+        countHeader.textContent = `${headers.length} คอลัมน์`;
+
+        const totalRows = evalRes.matchedRows.length;
+        if (totalRows === 0) return;
+
+        headers.forEach(h => {
+          let correct = 0;
+          evalRes.matchedRows.forEach(r => {
+            if (r.cells[h] && r.cells[h].isCorrect) correct++;
+          });
+          const pct = Number(((correct / totalRows) * 100).toFixed(0));
+          const isPk = currentDatasetConfig.pkCols.includes(h);
+
+          const barItem = document.createElement('div');
+          barItem.className = 'p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs';
+          barItem.innerHTML = `
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-slate-800 truncate" title="${escapeHtml(h)}">
+                ${isPk ? '🔑 ' : ''}${escapeHtml(h)}
+              </span>
+              <span class="font-mono font-bold ${pct === 100 ? 'text-emerald-600' : pct >= 80 ? 'text-blue-600' : 'text-rose-600'}">
+                ${pct}% (${correct}/${totalRows})
+              </span>
+            </div>
+            <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+              <div class="h-full rounded-full ${pct === 100 ? 'bg-emerald-500' : pct >= 80 ? 'bg-blue-500' : 'bg-rose-500'}" style="width: ${pct}%"></div>
+            </div>
+          `;
+          grid.appendChild(barItem);
+        });
+      }
+
+      // Render Checkpoints Accordion/List
+      function renderCheckpointsList(evalRes) {
+        const container = document.getElementById('checkpointsList');
+        const summaryBadge = document.getElementById('checkpointSummaryBadge');
+        if (!container) return;
+
+        container.innerHTML = '';
+        summaryBadge.textContent = `ผ่าน ${evalRes.rubricScore} / ${evalRes.rubricMax} ข้อ`;
+
+        const filtered = evalRes.rubricResults.filter(r => {
+          if (currentCheckpointFilter === 'failed') return !r.passed;
+          if (currentCheckpointFilter === 'passed') return r.passed;
+          if (currentCheckpointFilter === 'star') return r.item.askOwner;
+          return true;
+        });
+
+        if (filtered.length === 0) {
+          container.innerHTML = `
+            <div class="col-span-full py-8 text-center text-slate-400">
+              ไม่มีเกณฑ์ประเมินในหมวดหมู่ที่เลือก
+            </div>
+          `;
+          return;
+        }
+
+        filtered.forEach(r => {
+          const item = r.item;
+          const card = document.createElement('div');
+          card.className = `checkpoint-item rounded-xl p-3.5 border transition-all ${
+            r.passed
+              ? 'bg-emerald-50/50 border-emerald-200 text-emerald-950'
+              : 'bg-rose-50/50 border-rose-200 text-rose-950'
+          }`;
+
+          const levelBadgeClass = item.level === 'ง่าย'
+            ? 'bg-emerald-100 text-emerald-800'
+            : item.level === 'กลาง'
+            ? 'bg-blue-100 text-blue-800'
+            : 'bg-purple-100 text-purple-800';
+
+          card.innerHTML = `
+            <div class="flex items-start justify-between gap-2 mb-2">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-200/80 text-slate-800">
+                  #${String(item.itemNum || item.id || item['#']).padStart(2, '0')}
+                </span>
+                <span class="px-2 py-0.5 rounded text-xs font-bold ${levelBadgeClass}">
+                  ${escapeHtml(item.level)}
+                </span>
+                ${item.askOwner ? `<span class="px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800">⭐ ถามเจ้าของ</span>` : ''}
+              </div>
+              <span class="px-2 py-0.5 rounded text-xs font-black ${r.passed ? 'bg-emerald-200 text-emerald-900' : 'bg-rose-200 text-rose-900'}">
+                ${r.passed ? '✅ ผ่าน' : '❌ ต้องแก้ไข'}
+              </span>
+            </div>
+
+            <div class="text-xs space-y-1">
+              <div class="font-bold text-slate-900">
+                📍 คอลัมน์: <span class="text-blue-700">${escapeHtml(item.col)}</span> (แถวที่ ${escapeHtml(item.origRow)})
+              </div>
+              <div class="text-slate-600">
+                ⚠️ จุดผิดเดิม: <code class="bg-slate-100 px-1 py-0.5 rounded text-slate-800 font-mono">${escapeHtml(item.origVal)}</code>
+              </div>
+              <div class="text-slate-600">
+                📝 ส่งมา: <code class="bg-slate-100 px-1 py-0.5 rounded font-mono ${r.passed ? 'text-emerald-700' : 'text-rose-700 font-bold'}">${escapeHtml(r.studentVal || '(ว่าง)')}</code>
+              </div>
+              <div class="pt-1.5 text-[11px] text-slate-500 border-t border-slate-200/60 leading-relaxed">
+                💡 <span class="font-semibold text-slate-700">เฉลย:</span> ${escapeHtml(item.explanation || item.correctVal)}
+              </div>
+            </div>
+          `;
+          container.appendChild(card);
+        });
+      }
+
+      // Render Diff Table
+      function renderDiffTable(evalRes) {
+        const thead = document.getElementById('tableHeadRow');
+        const tbody = document.getElementById('tableBody');
+        const extraBanner = document.getElementById('extraRowsBanner');
+        const missingBanner = document.getElementById('missingRowsBanner');
+        const extraCountText = document.getElementById('extraRowsCountText');
+        const missingCountText = document.getElementById('missingRowsCountText');
+        const tableRowsInfo = document.getElementById('tableRowsInfo');
+        if (!thead || !tbody) return;
+
+        const headers = currentDatasetConfig.headers || [];
+
+        // Build Table Headers
+        thead.innerHTML = `
+          <th class="px-4 py-3 border-r border-slate-200 w-14 text-center">#</th>
+        `;
+        headers.forEach(h => {
+          const isPk = currentDatasetConfig.pkCols.includes(h);
+          const th = document.createElement('th');
+          th.className = `px-4 py-3 border-r border-slate-200 font-bold min-w-[130px] ${isPk ? 'text-blue-700 bg-blue-50/50' : 'text-slate-700'}`;
+          th.innerHTML = isPk ? `🔑 ${escapeHtml(h)}` : escapeHtml(h);
+          thead.appendChild(th);
+        });
+
+        // Extra Rows Banner
+        if (evalRes.extraRows.length > 0) {
+          extraBanner.classList.remove('hidden');
+          extraCountText.textContent = `${evalRes.extraRows.length} แถว (พบแถวซ้ำหรือแถวแปลกปลอม)`;
+        } else {
+          extraBanner.classList.add('hidden');
+        }
+
+        // Missing Rows Banner
+        if (evalRes.missingRows.length > 0) {
+          missingBanner.classList.remove('hidden');
+          missingCountText.textContent = `${evalRes.missingRows.length} แถว (แถวที่ขาดไปจาก Ground Truth)`;
+        } else {
+          missingBanner.classList.add('hidden');
+        }
+
+        // Build Table Rows
+        tbody.innerHTML = '';
+        let displayedRowsCount = 0;
+
+        // 1. Matched Rows
+        evalRes.matchedRows.forEach((rowDiff, idx) => {
+          // Errors-only filter check
+          const hasError = headers.some(h => rowDiff.cells[h] && !rowDiff.cells[h].isCorrect);
+          if (isErrorsOnlyFilter && !hasError) {
+            return;
+          }
+
+          displayedRowsCount++;
+          const tr = document.createElement('tr');
+          tr.className = `border-b border-slate-200 hover:bg-slate-50/50 transition-colors ${hasError ? 'bg-rose-50/15' : ''}`;
+
+          // Row index
+          let rowHtml = `
+            <td class="px-4 py-3 border-r border-slate-200 text-center font-mono text-xs text-slate-400 font-bold">
+              ${idx + 1}
+            </td>
+          `;
+
+          // Iterate all columns in dataset order (including PK columns)
+          headers.forEach(h => {
+            const cell = rowDiff.cells[h];
+            const isPk = currentDatasetConfig.pkCols.includes(h);
+            if (!cell) {
+              rowHtml += `<td class="px-4 py-3 border-r border-slate-200 text-slate-400">-</td>`;
+              return;
+            }
+
+            if (cell.isCorrect) {
+              rowHtml += `
+                <td class="px-4 py-3 border-r border-slate-200 cell-pass font-medium ${isPk ? 'font-mono font-bold text-blue-900 bg-blue-50/30' : ''}">
+                  ${escapeHtml(cell.val)}
+                </td>
+              `;
+            } else {
+              // Incorrect cell: clickable for reveal!
+              const cellValDisplay = isRevealAll
+                ? `<div class="line-through text-rose-500 text-xs mb-0.5">${escapeHtml(cell.val || '(ว่าง)')}</div>
+                   <div class="text-emerald-700 font-bold text-sm bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200 inline-block">➡️ ${escapeHtml(cell.gtVal)}</div>`
+                : `<div class="flex items-center justify-between gap-1.5">
+                     <span class="font-semibold text-rose-950 ${isPk ? 'font-mono font-bold' : ''}">${escapeHtml(cell.val || '(ว่าง)')}</span>
+                     <span class="text-[10px] uppercase font-bold text-rose-700 bg-rose-200/90 px-1.5 py-0.5 rounded shadow-2xs">🔍 ดูเฉลย</span>
+                   </div>`;
+
+              rowHtml += `
+                <td class="px-4 py-3 border-r border-slate-200 cell-fail cursor-pointer" 
+                    data-row-pk="${escapeHtml(rowDiff.pk)}"
+                    data-col="${escapeHtml(h)}"
+                    data-student-val="${escapeHtml(cell.val)}"
+                    data-gt-val="${escapeHtml(cell.gtVal)}"
+                    data-explanation="${escapeHtml(cell.explanation)}"
+                    data-rubric="${escapeHtml(JSON.stringify(cell.rubricRef || {}))}">
+                  ${cellValDisplay}
+                </td>
+              `;
+            }
+          });
+
+          tr.innerHTML = rowHtml;
+          tbody.appendChild(tr);
+        });
+
+        // 2. Extra Rows (Unremoved duplicates / unexpected)
+        if (evalRes.extraRows.length > 0) {
+          evalRes.extraRows.forEach(extra => {
+            displayedRowsCount++;
+            const tr = document.createElement('tr');
+            tr.className = 'border-b border-amber-200 bg-amber-50/70 text-amber-950';
+
+            let rowHtml = `
+              <td class="px-4 py-3 border-r border-amber-200 text-center font-mono text-xs text-amber-600 font-bold">
+                ⚠️
+              </td>
+            `;
+
+            headers.forEach(h => {
+              const isPk = currentDatasetConfig.pkCols.includes(h);
+              rowHtml += `
+                <td class="px-4 py-3 border-r border-amber-200 font-mono text-xs ${isPk ? 'font-bold text-amber-900' : ''}">
+                  ${escapeHtml(extra.row[h] || '')}
+                  ${isPk ? '<span class="block text-[10px] text-amber-700 uppercase font-semibold">[แถวเกิน: ควรลบออก]</span>' : ''}
+                </td>
+              `;
+            });
+
+            tr.innerHTML = rowHtml;
+            tbody.appendChild(tr);
+          });
+        }
+
+        // 3. Missing Rows (Ground truth rows missing from student submission)
+        if (evalRes.missingRows.length > 0) {
+          evalRes.missingRows.forEach(miss => {
+            displayedRowsCount++;
+            const tr = document.createElement('tr');
+            tr.className = 'border-b border-purple-200 bg-purple-50/70 text-purple-950';
+
+            let rowHtml = `
+              <td class="px-4 py-3 border-r border-purple-200 text-center font-mono text-xs text-purple-600 font-bold">
+                🚨
+              </td>
+            `;
+
+            headers.forEach(h => {
+              const isPk = currentDatasetConfig.pkCols.includes(h);
+              rowHtml += `
+                <td class="px-4 py-3 border-r border-purple-200 font-mono text-xs text-purple-800 ${isPk ? 'font-bold text-purple-900' : ''}">
+                  ${escapeHtml(miss.row[h] || '')}
+                  ${isPk ? '<span class="block text-[10px] text-purple-700 uppercase font-semibold">[แถวขาดหายไป]</span>' : ''}
+                </td>
+              `;
+            });
+
+            tr.innerHTML = rowHtml;
+            tbody.appendChild(tr);
+          });
+        }
+
+        tableRowsInfo.textContent = `แสดง ${displayedRowsCount} แถว (จากทั้งหมด ${evalRes.matchedRows.length + evalRes.extraRows.length} แถว)`;
+
+        // Attach click handlers to failed cells
+        tbody.querySelectorAll('.cell-fail').forEach(cell => {
+          cell.addEventListener('click', function () {
+            openExplanationModal({
+              pk: this.getAttribute('data-row-pk'),
+              col: this.getAttribute('data-col'),
+              studentVal: this.getAttribute('data-student-val'),
+              gtVal: this.getAttribute('data-gt-val'),
+              explanation: this.getAttribute('data-explanation'),
+              rubric: JSON.parse(this.getAttribute('data-rubric') || '{}')
+            });
+          });
+        });
+      }
+
+      // Modal Dialog Logic
+      function openExplanationModal(info) {
+        const modal = document.getElementById('explanationModal');
+        const numEl = document.getElementById('modalCheckpointNum');
+        const diffBadge = document.getElementById('modalDifficultyBadge');
+        const starBadge = document.getElementById('modalStarBadge');
+        const titleEl = document.getElementById('modalColumnTitle');
+        const pkEl = document.getElementById('modalPkSubtitle');
+        const studentEl = document.getElementById('modalStudentVal');
+        const gtEl = document.getElementById('modalGtVal');
+        const explEl = document.getElementById('modalExplanation');
+        const flawEl = document.getElementById('modalFlawText');
+        const flawContainer = document.getElementById('modalFlawContainer');
+        const askOwnerBox = document.getElementById('modalAskOwnerBox');
+
+        const rub = info.rubric || {};
+        const hasRubric = rub && rub.id !== undefined;
+
+        numEl.textContent = hasRubric ? `เกณฑ์ข้อ #${rub.itemNum || rub.id || rub['#']}` : 'ข้อผิดพลาดทั่วไป';
+        
+        if (hasRubric && rub.level) {
+          diffBadge.textContent = `ระดับ: ${rub.level}`;
+          diffBadge.className = `px-2 py-0.5 rounded text-xs font-bold ${
+            rub.level === 'ง่าย' ? 'bg-emerald-100 text-emerald-800' :
+            rub.level === 'กลาง' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+          }`;
+          diffBadge.classList.remove('hidden');
+        } else {
+          diffBadge.classList.add('hidden');
+        }
+
+        if (hasRubric && rub.askOwner) {
+          starBadge.classList.remove('hidden');
+          askOwnerBox.classList.remove('hidden');
+        } else {
+          starBadge.classList.add('hidden');
+          askOwnerBox.classList.add('hidden');
+        }
+
+        titleEl.textContent = `คอลัมน์: ${info.col}`;
+        pkEl.textContent = `แถว Primary Key: ${info.pk}`;
+        studentEl.textContent = info.studentVal || '(ค่าว่าง / Blank)';
+        gtEl.textContent = info.gtVal || '(ค่าว่าง / Blank)';
+
+        explEl.textContent = info.explanation || (hasRubric ? rub.explanation : 'ค่าในช่องนี้ต้องได้รับการแก้ไขให้ตรงกับ Ground Truth');
+
+        if (hasRubric && rub.origVal) {
+          flawContainer.classList.remove('hidden');
+          flawEl.textContent = `${rub.origVal} ${rub.flaw ? `(${rub.flaw})` : ''}`;
+        } else {
+          flawContainer.classList.add('hidden');
+        }
+
+        modal.classList.remove('hidden');
+      }
+
+      window.closeModal = function () {
+        const modal = document.getElementById('explanationModal');
+        if (modal) modal.classList.add('hidden');
+      };
+
+      // Handle Keyboard Escape
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+          window.closeModal();
+        }
+      });
+
+      // Event Listeners Setup
+      function setupEventListeners() {
+        // 1. Dataset Selector
+        const datasetSelect = document.getElementById('datasetSelect');
+        datasetSelect.addEventListener('change', function () {
+          setDataset(this.value);
+        });
+
+        // 2. Projector Mode Toggle
+        const projectorBtn = document.getElementById('projectorModeToggle');
+        const projectorBtnText = document.getElementById('projectorBtnText');
+        projectorBtn.addEventListener('click', function () {
+          isProjectorMode = !isProjectorMode;
+          document.body.classList.toggle('projector-mode', isProjectorMode);
+          if (isProjectorMode) {
+            projectorBtn.className = 'flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all border border-blue-400 bg-blue-600 text-white shadow-md active:scale-95';
+            projectorBtnText.textContent = 'ย่อจอปกติ (Exit Projector)';
+          } else {
+            projectorBtn.className = 'flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 active:scale-95 shadow-sm';
+            projectorBtnText.textContent = 'ขยายจอใหญ่ (Projector Mode)';
+          }
+        });
+
+        // 3. Reveal All Toggle
+        const revealBtn = document.getElementById('revealAllToggle');
+        const revealBtnText = document.getElementById('revealBtnText');
+        const revealIcon = document.getElementById('revealIcon');
+        revealBtn.addEventListener('click', function () {
+          isRevealAll = !isRevealAll;
+          if (isRevealAll) {
+            revealBtn.className = 'flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all border border-emerald-400 bg-emerald-600 text-white shadow-md active:scale-95';
+            revealBtnText.textContent = 'ซ่อนเฉลย (Hide All)';
+            revealIcon.textContent = '🔒';
+          } else {
+            revealBtn.className = 'flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 active:scale-95 shadow-sm';
+            revealBtnText.textContent = 'เฉลยทั้งหมด (Reveal All)';
+            revealIcon.textContent = '👁️';
+          }
+          if (currentEvaluation) {
+            renderDiffTable(currentEvaluation);
+          }
+        });
+
+        // 4. Demo: Load Dirty File
+        const loadDirtyBtn = document.getElementById('loadDirtyDemoBtn');
+        loadDirtyBtn.addEventListener('click', function () {
+          let dirtyRows = [];
+          if (currentSetId === 'set06') {
+            parseCsvInput(RAW_SET06_CSV, (err, rows) => {
+              if (!err && rows) dirtyRows = rows;
+            });
+          } else {
+            dirtyRows = generateDirtyRows(currentDatasetConfig);
+          }
+
+          updateFileBanner(`${currentSetId}_dirty_sample.csv`, '1.8 KB', dirtyRows.length, 'โหลดข้อมูลโจทย์ตัวอย่าง (Uncleaned)');
+          evaluateAndRender(dirtyRows);
+        });
+
+        // 5. Demo: Load Clean Ground Truth File
+        const loadCleanBtn = document.getElementById('loadCleanDemoBtn');
+        loadCleanBtn.addEventListener('click', function () {
+          const cleanRows = currentDatasetConfig.groundTruthRows;
+          updateFileBanner(`${currentSetId}_cleaned_groundtruth.csv`, '1.6 KB', cleanRows.length, 'โหลดเฉลย Ground Truth 100%');
+          evaluateAndRender(cleanRows);
+        });
+
+        // 6. Reset Data Button
+        const resetBtn = document.getElementById('resetDataBtn');
+        resetBtn.addEventListener('click', function () {
+          currentParsedRows = null;
+          currentEvaluation = null;
+          const banner = document.getElementById('fileLoadedBanner');
+          if (banner) banner.classList.add('hidden');
+          
+          // Clear metric numbers
+          document.getElementById('rubricScoreDisplay').textContent = '--';
+          document.getElementById('starScoreDisplay').textContent = '★ --';
+          document.getElementById('accuracyDisplay').textContent = '--%';
+          document.getElementById('rowCountDisplay').textContent = '--';
+          document.getElementById('columnAccuracyContainer').classList.add('hidden');
+
+          // Reset table body
+          document.getElementById('tableBody').innerHTML = `
+            <tr>
+              <td colspan="8" class="py-16 text-center text-slate-400">
+                ยังไม่มีข้อมูลที่จะแสดง กรุณาโหลดไฟล์ตัวอย่างหรือลากไฟล์ CSV ของนักเรียนมาวาง
+              </td>
+            </tr>
+          `;
+          document.getElementById('checkpointsList').innerHTML = `
+            <div class="col-span-full py-8 text-center text-slate-400">
+              ยังไม่ได้ประเมินข้อมูล กรุณาโหลดไฟล์ตัวอย่างหรือลากไฟล์ CSV มาวาง
+            </div>
+          `;
+        });
+
+        // 7. Dropzone Drag & Drop
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileInput');
+
+        dropzone.addEventListener('click', () => fileInput.click());
+
+        dropzone.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropzone.classList.add('drag-active');
+        });
+
+        dropzone.addEventListener('dragleave', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropzone.classList.remove('drag-active');
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropzone.classList.remove('drag-active');
+          if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleFileUpload(e.dataTransfer.files[0]);
+          }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            handleFileUpload(e.target.files[0]);
+          }
+        });
+
+        // 8. Filter Errors Only Toggle
+        const filterErrorsBtn = document.getElementById('toggleFilterErrorsBtn');
+        filterErrorsBtn.addEventListener('click', function () {
+          isErrorsOnlyFilter = !isErrorsOnlyFilter;
+          if (isErrorsOnlyFilter) {
+            filterErrorsBtn.className = 'ml-2 px-3 py-1 rounded-lg border border-rose-300 bg-rose-50 text-rose-700 font-bold shadow-sm active:scale-95';
+            filterErrorsBtn.textContent = '❌ แสดงเฉพาะข้อผิด (Active)';
+          } else {
+            filterErrorsBtn.className = 'ml-2 px-3 py-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold shadow-sm active:scale-95';
+            filterErrorsBtn.textContent = '🔍 กรองเฉพาะแถวที่ผิด';
+          }
+          if (currentEvaluation) {
+            renderDiffTable(currentEvaluation);
+          }
+        });
+
+        // 9. Checkpoints Accordion Toggle
+        const toggleCheckpointsBtn = document.getElementById('toggleCheckpointsBtn');
+        const checkpointsDrawerBody = document.getElementById('checkpointsDrawerBody');
+        const accordionIcon = document.getElementById('checkpointsAccordionIcon');
+        toggleCheckpointsBtn.addEventListener('click', function () {
+          checkpointsDrawerBody.classList.toggle('hidden');
+          accordionIcon.classList.toggle('rotate-180');
+        });
+
+        // 10. Checkpoint Filter Chips
+        document.querySelectorAll('.checkpoint-filter-btn').forEach(btn => {
+          btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            document.querySelectorAll('.checkpoint-filter-btn').forEach(b => {
+              b.className = 'checkpoint-filter-btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200';
+            });
+            this.className = 'checkpoint-filter-btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm';
+            currentCheckpointFilter = this.getAttribute('data-filter') || 'all';
+            if (currentEvaluation) {
+              renderCheckpointsList(currentEvaluation);
+            }
+          });
+        });
+      }
+
+      // Handle user uploaded file
+      function handleFileUpload(file) {
+        parseCsvInput(file, (err, rows, headers) => {
+          if (err || !rows || rows.length === 0) {
+            alert("ไม่สามารถอ่านข้อมูลจากไฟล์ CSV นี้ได้ กรุณาตรวจสอบรูปแบบไฟล์");
+            return;
+          }
+
+          // Auto-detect challenge dataset
+          const detected = detectDataset(file.name, headers);
+          if (detected) {
+            setDataset(detected.id, detected.reason);
+          }
+
+          // Display File Info
+          const sizeKb = (file.size / 1024).toFixed(1);
+          updateFileBanner(file.name, `${sizeKb} KB`, rows.length, detected ? `ตรวจจับ: ${detected.config.name}` : 'จัดเรียงด้วย Primary Key');
+
+          // Evaluate
+          evaluateAndRender(rows);
+        });
+      }
+
+      // Update File Info Banner
+      function updateFileBanner(fileName, fileSize, rowCount, statusText) {
+        const banner = document.getElementById('fileLoadedBanner');
+        const nameEl = document.getElementById('loadedFileName');
+        const sizeEl = document.getElementById('loadedFileSize');
+        const countBadge = document.getElementById('loadedRowCountBadge');
+        const statusEl = document.getElementById('loadedDetectStatus');
+
+        if (banner) {
+          banner.classList.remove('hidden');
+          nameEl.textContent = fileName;
+          sizeEl.textContent = `(${fileSize})`;
+          countBadge.textContent = `${rowCount} แถว`;
+          statusEl.textContent = statusText;
+        }
+      }
+
+      // Initial Bootstrap
+      window.addEventListener('DOMContentLoaded', () => {
+        setDataset('set06');
+        setupEventListeners();
+
+        // Auto-run initial evaluation with dirty demo file for set06 so dashboard opens ready
+        if (window.DiffEngine && window.DATASETS_REGISTRY) {
+          parseCsvInput(RAW_SET06_CSV, (err, rows) => {
+            if (!err && rows) {
+              updateFileBanner('set06_spareparts.csv', '1.8 KB', rows.length, 'ตัวอย่างไฟล์โจทย์เริ่มต้น (Uncleaned)');
+              evaluateAndRender(rows);
+            }
+          });
+        }
+      });
+
+    })();
+  </script>
+</body>
+</html>

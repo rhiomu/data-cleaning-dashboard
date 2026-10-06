@@ -1,53 +1,40 @@
+# AI Agents & Superpowers Tooling
+.agents/
+docs/
+
+# Official Answer Keys & Source Info (ป้องกันผู้เรียนเห็นไฟล์เฉลย Word/Excel)
+info/
+groundtruth/
+
+# Python scripts & tests (สำหรับคนทำระบบ ไม่ต้องเอาขึ้นเว็บ)
+build_registry.py
+test_*.py
+verify_e2e.py
+clean_spareparts*.py
+
 # Python Cache
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Testing & Coverage
 .pytest_cache/
 .coverage
-htmlcov/
 
 # Environment & Virtualenv
 .env
 .venv
 env/
 venv/
-ENV/
 
 # OS specific files
 .DS_Store
 .DS_Store?
 ._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 
 # Editor & IDE
 .vscode/
 .idea/
-*.sublime-project
-*.sublime-workspace
 *.swp
-*.swo
 
 # Temporary logs & tooling
 *.log
